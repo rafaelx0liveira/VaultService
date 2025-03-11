@@ -1,0 +1,94 @@
+name: Publish VaultService to NuGet
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # Allows creating and pushing tags
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensures all tags are fetched
+
+      # Setup .NET SDK
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 9.0
+
+      # Get latest tag and prepare next version
+      - name: Determine new version
+        id: version
+        run: |
+          TAG=$(git tag | sort -V | tail -n 1)
+          if [ -z "$TAG" ]; then
+            TAG="v0.0.0"
+          fi
+          echo "Latest tag: $TAG"
+
+          VERSION=${TAG#v}
+          MAJOR=$(echo $VERSION | awk -F. '{print $1}')
+          MINOR=$(echo $VERSION | awk -F. '{print $2}')
+          PATCH=$(echo $VERSION | awk -F. '{print $3}')
+
+          if [ "$PATCH" -eq 9 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          if [ "$MINOR" -eq 10 ]; then
+            MINOR=0
+            MAJOR=$((MAJOR + 1))
+          fi
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          CLEAN_VERSION="$MAJOR.$MINOR.$PATCH"
+
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+
+      # Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Build the project
+      - name: Build solution
+        run: dotnet build --configuration Release
+
+      # Format code (optional, ensure formatting)
+      - name: Format code
+        run: dotnet format ./VaultService.sln
+
+      # Pack the NuGet package
+      - name: Pack NuGet Package
+        run: dotnet pack VaultService/VaultService.csproj --configuration Release -o ./nupkg -p:PackageVersion=${{ env.CLEAN_VERSION }}
+
+      # List generated package
+      - name: List generated packages
+        run: ls -l ./nupkg
+
+      # Publish to NuGet
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push ./nupkg/VaultService.${{ env.CLEAN_VERSION }}.nupkg -k $NUGET_API_KEY -s https://api.nuget.org/v3/index.json
+
+      # Create and push a new Git tag
+      - name: Create and push new tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Creating and pushing tag: ${{ env.NEW_VERSION }}"
+          git tag ${{ env.NEW_VERSION }}
+          git push origin ${{ env.NEW_VERSION }}
