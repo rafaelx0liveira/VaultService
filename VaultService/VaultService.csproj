@@ -10,7 +10,7 @@
 		<Authors>Rafael Oliveira</Authors>
 		<RepositoryUrl>https://github.com/rafaelx0liveira/VaultService</RepositoryUrl>
 		<Description>The VaultService library is optimized to facilitate integration with HashiCorp Vault.</Description>
-		<ReadmeFile>..\README.md</ReadmeFile>
+		<ReadmeFile>README.md</ReadmeFile>
 	</PropertyGroup>
 
 	<ItemGroup>
