@@ -131,5 +131,23 @@ namespace VaultService.Core
                 throw new VaultClientException($"Unexpected error while fetching secret '{key}' from '{path}'.", ex);
             }
         }
+
+        /// <summary>
+        /// Check Vault status
+        /// </summary>
+        public async Task<bool> CheckVaultHealthAsync()
+        {
+            try
+            {
+                var healthStatus = await _vaultClient.V1.System.GetHealthStatusAsync();
+                return !healthStatus.Sealed;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[VaultService] - Error checking Vault health: {ex.Message}");
+                return false; 
+            }
+        }
+
     }
 }

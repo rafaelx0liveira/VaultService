@@ -48,22 +48,17 @@ dotnet add package Serilog.Sinks.Console
 
 ### **1️⃣ Register in `Program.cs`**
 ```csharp
-using VaultService;
+using VaultService.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔹 Configuring the Vault service
-builder.Services.AddSingleton<IKeyVaultService>(provider =>
-{
-    var keyVault = new VaultService();
-    keyVault.Connect(
-        vaultAddress: "http://your-vault.local",
-        vaultToken: "your-token",
-        mountPoint: "secret", // Optional, default: "secret"
-        basePath: "project"   // Optional
-    );
-    return keyVault;
-});
+// 🔹 Configure VaultService
+builder.Services.AddVaultService(
+    vaultAddress: "http://localhost:8200/", // 🔥 Your Vault address
+    vaultToken: "your-token",                 // 🔥 Your Vault authentication token
+    mountPoint: "secret",                      // 🔥 Your Vault mount point
+    basePath: "project"                        // 🔥 Your Vault base path
+);
 
 var app = builder.Build();
 app.Run();
@@ -75,7 +70,21 @@ app.Run();
 ### **🔹 Fetch Secret Easily**
 
 ```csharp
-var jwtSecret = keyVaultService.GetSecret("project/database:JwtSecret");
+public class MyService
+{
+    private readonly IVaultClient _vaultClient;
+    
+    public MyService(IVaultClient vaultClient)
+    {
+        _vaultClient = vaultClient;
+    }
+
+    public void RetrieveSecret()
+    {
+        var jwtSecret = _vaultClient.GetSecret("project/database:JwtSecret");
+        Console.WriteLine($"🔐 JwtSecret: {jwtSecret}");
+    }
+}
 ```
 
 ### **🔹 Alternatively, pass `path` and `key` separately**
@@ -94,8 +103,8 @@ var rabbitHost = keyVaultService.GetSecret("project/rabbitmq/configs", "HostName
 - ⚡ **Subsequent calls**: Instantly returns from memory.
 
 ```csharp
-var jwtSecret = keyVaultService.GetSecret("project/database:JwtSecret"); // 🔥 First call: fetches from Vault
-var jwtSecret2 = keyVaultService.GetSecret("project/database:JwtSecret"); // ⚡ Second call: fetches from memory
+var jwtSecret = _vaultClient.GetSecret("project/database:JwtSecret"); // 🔥 First call: fetches from Vault
+var jwtSecret2 = _vaultClient.GetSecret("project/database:JwtSecret"); // ⚡ Second call: fetches from memory
 ```
 
 ### **✅ 2. Supports Vault Subfolders**
@@ -114,14 +123,14 @@ secret/project/
 ```
 Now, fetching secrets from **subfolders** is easy:
 ```csharp
-var rabbitUser = keyVaultService.GetSecret("project/rabbitmq/configs:username");
-var jwtSecret = keyVaultService.GetSecret("project/jwt:secret");
+var rabbitUser = _vaultClient.GetSecret("project/rabbitmq/configs:username");
+var jwtSecret = _vaultClient.GetSecret("project/jwt:secret");
 ```
 
 ### **✅ 3. On-Demand Fetching for Better Performance**
 🔹 Avoids loading all secrets at startup, fetching only when needed.
 ```csharp
-var apiKey = keyVaultService.GetSecret("project/api:ApiKey");
+var apiKey = _vaultClient.GetSecret("project/api:ApiKey");
 ```
 
 ### **✅ 4. Automatic Vault Connection Verification**
@@ -139,7 +148,7 @@ if (healthStatus.Sealed)
 ```csharp
 try
 {
-    var invalidSecret = keyVaultService.GetSecret("project/database:InvalidKey");
+    var invalidSecret = _vaultClient.GetSecret("project/database:InvalidKey");
 }
 catch (VaultServiceException ex)
 {
