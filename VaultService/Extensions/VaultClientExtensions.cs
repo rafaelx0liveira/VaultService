@@ -13,8 +13,8 @@ namespace VaultService.Extensions
                 this IServiceCollection services,
                 string vaultAddress, 
                 string vaultToken,
-                string mountPoint = "secret",
-                string basePath = "") 
+                string mountPoint,
+                string basePath) 
         {
             services.AddSingleton<IVaultClient>(provider =>
             {
