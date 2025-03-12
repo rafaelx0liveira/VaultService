@@ -1,23 +1,22 @@
 ﻿using Serilog;
 using System.Collections.Concurrent;
 using VaultService.Exceptions;
-using VaultService.Interface;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods.Token;
 
-namespace VaultService
+namespace VaultService.Core
 {
-    public class VaultService : IVaultService
+    public class VaultClient : Interface.IVaultClient
     {
-        private IVaultClient _vaultClient;
+        private VaultSharp.IVaultClient _vaultClient;
         private readonly ConcurrentDictionary<string, string> _secrets = new();
         private readonly ILogger _logger;
         private string _mountPoint;
         private string _basePath;
 
-        public VaultService()
+        public VaultClient()
         {
-            _logger = Log.ForContext<VaultService>();
+            _logger = Log.ForContext<VaultClient>();
         }
 
         /// <summary>
@@ -29,7 +28,7 @@ namespace VaultService
         /// <param name="basePath">Base path for secrets</param>
         public void Connect(string vaultAddress, string vaultToken, string mountPoint = "secret", string basePath = "")
         {
-            if(string.IsNullOrWhiteSpace(vaultAddress))
+            if (string.IsNullOrWhiteSpace(vaultAddress))
                 throw new ArgumentNullException(nameof(vaultAddress), "Vault address cannot be null");
 
             if (string.IsNullOrWhiteSpace(vaultToken))
@@ -37,7 +36,7 @@ namespace VaultService
 
             var authMethod = new TokenAuthMethodInfo(vaultToken);
             var vaultClientSettings = new VaultClientSettings(vaultAddress, authMethod);
-            _vaultClient = new VaultClient(vaultClientSettings);
+            _vaultClient = new VaultSharp.VaultClient(vaultClientSettings);
 
             _mountPoint = mountPoint;
             _basePath = basePath;
@@ -51,12 +50,12 @@ namespace VaultService
                 }
                 else
                 {
-                    throw new VaultServiceException($"Vault at {vaultAddress} is sealed and cannot be accessed.");
+                    throw new VaultClientException($"Vault at {vaultAddress} is sealed and cannot be accessed.");
                 }
             }
             catch (Exception ex)
             {
-                throw new VaultServiceException($"Failed to connect to Vault at {vaultAddress}.", ex);
+                throw new VaultClientException($"Failed to connect to Vault at {vaultAddress}.", ex);
             }
         }
 
@@ -90,7 +89,7 @@ namespace VaultService
                 return value;
             }
 
-            throw new VaultServiceException($"Key '{fullKey}' not found in Vault.");
+            throw new VaultClientException($"Key '{fullKey}' not found in Vault.");
         }
 
         /// <summary>
@@ -125,11 +124,11 @@ namespace VaultService
             }
             catch (VaultSharp.Core.VaultApiException ex)
             {
-                throw new VaultServiceException($"Failed to retrieve secret '{key}' from path '{path}'.", ex);
+                throw new VaultClientException($"Failed to retrieve secret '{key}' from path '{path}'.", ex);
             }
             catch (Exception ex)
             {
-                throw new VaultServiceException($"Unexpected error while fetching secret '{key}' from '{path}'.", ex);
+                throw new VaultClientException($"Unexpected error while fetching secret '{key}' from '{path}'.", ex);
             }
         }
     }
