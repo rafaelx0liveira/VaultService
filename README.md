@@ -56,13 +56,66 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddVaultService(
     vaultAddress: "http://localhost:8200/", // 🔥 Your Vault address
     vaultToken: "your-token",                 // 🔥 Your Vault authentication token
-    mountPoint: "secret",                      // 🔥 Your Vault mount point
-    basePath: "project"                        // 🔥 Your Vault base path
 );
 
 var app = builder.Build();
 app.Run();
 ```
+---
+
+## **🌍 Using `basePath` to Simplify Secret Retrieval**  
+
+When configuring the `VaultClient`, you can specify a **`basePath`** to avoid repeating common prefixes when retrieving secrets.  
+
+### **🔹 Example: Secret Path in Vault**
+Imagine that your secret is stored at:  
+```
+secret/project/database
+```
+- Here, `"secret"` is the **mount point**.
+- `"project/database"` is the **full path to the secret**.
+
+### **🔹 How to configure the VaultClient with `basePath`**
+```csharp
+builder.Services.AddVaultService(
+    vaultAddress: "http://localhost:8200/",
+    vaultToken: "my-token",
+    mountPoint: "secret",
+    basePath: "project" 
+);
+```
+- `mountPoint = "secret"`
+- `basePath = "project"`
+
+### **🔹 Retrieving a Secret**
+Once `basePath` is set, you only need to provide the **relative path**:
+```csharp
+var connectionString = vaultClient.GetSecret("database:ConnectionString");
+```
+- The VaultClient **automatically prefixes** `"project"` to the request.
+- The final Vault API call will be:
+  ```
+  secret/project/database:ConnectionString
+  ```
+- Equivalent .NET Vault API request:
+  ```csharp
+  _vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync("project/database", mountPoint: "secret")
+  ```
+
+### **🔹 Benefits of Using `basePath`**
+✅ **Removes redundant path repetition**  
+✅ **Keeps code cleaner and more readable**  
+✅ **Prevents hardcoded Vault paths in multiple places**  
+
+Now, instead of calling:
+```csharp
+vaultClient.GetSecret("project/database:ConnectionString");
+```
+You can simply do:
+```csharp
+vaultClient.GetSecret("database:ConnectionString");
+```
+🔥 **Much simpler, right?** 🚀
 
 ---
 
