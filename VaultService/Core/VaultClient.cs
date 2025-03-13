@@ -8,7 +8,7 @@ namespace VaultService.Core
 {
     public class VaultClient : Interface.IVaultClient
     {
-        private VaultSharp.IVaultClient _vaultClient;
+        private IVaultClient _vaultClient;
         private readonly ConcurrentDictionary<string, string> _secrets = new();
         private readonly ILogger _logger;
         private string _mountPoint;
